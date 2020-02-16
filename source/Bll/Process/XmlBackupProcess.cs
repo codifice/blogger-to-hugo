@@ -43,16 +43,16 @@ namespace BloggerToHugo.Bll.Process
             // 取得文章
             var posts = feed.entry.Where(x => x.category.Any(y => y.scheme.EndsWith("kind") && y.term.EndsWith("post"))).ToList();
 
-            // ShowAllPostInfo(posts);
+            ShowAllPostInfo(posts);
 
-            // ShowFirstPostStrongModel(posts);
+            ShowFirstPostStrongModel(posts);
 
             var BlogPosts = posts.Select(x => x.ToBlogPostModel()).ToList();
 
             var imageProcessor = new ImageProcessor();
 
             // Uncomment the line below if you need to download images.
-            //imageProcessor.PrepareImageDict(takeoutImage); 
+            imageProcessor.PrepareImageDict(takeoutImagePath); 
 
             var index = 1;
 
@@ -63,15 +63,19 @@ namespace BloggerToHugo.Bll.Process
             {
                 try
                 {
-                    //imageProcessor.ProcessImage(post, postPath);
-
+                    var pagePath = Path.Combine(postPath, Path.GetFileNameWithoutExtension(post.NewFileName));
+                    if (!Directory.Exists(pagePath))
+                    {
+                        Directory.CreateDirectory(pagePath);
+                    }
+                    
                     ProcessContentTag(post);
                     ProcessContent(post);
-
+                    imageProcessor.ProcessImage(post, pagePath);
                     var toHtmlBll = new BlogPostModelToHtmlLogic();
                     // Console.WriteLine(toCshtmlBll.ToHtmlTemplateString(BlogPosts.First()));
 
-                    File.WriteAllText(Path.Combine(postPath, post.NewFileName), toHtmlBll.ToHtmlTemplateString(post));
+                    File.WriteAllText(Path.Combine(pagePath, "index.html"), toHtmlBll.ToHtmlTemplateString(post));
 
                     Console.WriteLine($"{index}/{BlogPosts.Count} 完成: {post.Title}");
 
@@ -102,7 +106,7 @@ namespace BloggerToHugo.Bll.Process
                 var postUrlWithoutExtension = post.UrlWithouDomain.Substring(0, post.UrlWithouDomain.LastIndexOf("."));
 
                 var template = @"<b:if cond='data:blog.canonicalUrl == """ + Constants.BlogUrl + post.UrlWithouDomain + "\"'/>" +
-                                    @"<link rel=""canonical"" href=""http://blog.alantsai.net/posts/" + postUrlWithoutExtension + "\"/>";
+                                    $"<link rel=\"canonical\" href=\"https://{Constants.NewBlogDomain}/posts/{postUrlWithoutExtension}\"/>";
                                     // 如果要自動跳轉，加入下面那行
                                     //@"<meta http-equiv=""refresh"" content=""0; url=href=""http://blog.alantsai.net/posts/" + postUrlWithoutExtension + "\"/>"
 
@@ -222,7 +226,7 @@ namespace BloggerToHugo.Bll.Process
 
         public void ProcessContentTag(BlogPostModel model)
         {
-            model.Content = model.Content.Replace("http://blog.alantsai.net/search/label", "/tags");
+            model.Content = model.Content.Replace($"https://{Constants.NewBlogDomain}/search/label", "/tags");
         }
     }
 }

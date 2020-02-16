@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using BloggerToHugo.Model;
@@ -16,7 +17,7 @@ namespace BloggerToHugo.Bll
             DownloadedImageDict = new Dictionary<string, string>();
         }
 
-        public Dictionary<string,string> DownloadedImageDict { get; set; }
+        public Dictionary<string, string> DownloadedImageDict { get; set; }
 
         public void PrepareImageDict(string imageDirctory)
         {
@@ -31,7 +32,8 @@ namespace BloggerToHugo.Bll
 
                 if (string.IsNullOrEmpty(model.url) == false)
                 {
-                    var localFile = allImageFiles.FirstOrDefault(x => x.Contains(Path.GetFileNameWithoutExtension(file)));
+                    var localFile =
+                        allImageFiles.FirstOrDefault(x => x.Contains(Path.GetFileNameWithoutExtension(file)));
                     DownloadedImageDict.Add(model.url, localFile);
                 }
             }
@@ -48,7 +50,7 @@ namespace BloggerToHugo.Bll
         {
             foreach (var item in model.Images)
             {
-                model.Content = model.Content.Replace(item.OriginalUrl, item.WyamAbsolutePath);
+                model.Content = model.Content.Replace(item.OriginalUrl, item.LocalPath);
             }
         }
 
@@ -56,29 +58,38 @@ namespace BloggerToHugo.Bll
         {
             if (model.Images.Count > 0)
             {
-                var basePath = Path.GetFileNameWithoutExtension(model.NewFileName) + "_Asset";
-                var path = Path.Combine(postPath, basePath);
+                var path = Path.Combine(postPath, "images");
 
                 Directory.CreateDirectory(path);
-
+                string newFilePath;
                 foreach (var item in model.Images)
                 {
-                    //if(DownloadedImageDict.ContainsKey(item.OriginalUrl) == false)
-                    //{
-                    //    Console.WriteLine($"{item.OriginalUrl} 不存在");
-                    //}
-                    var key = DownloadedImageDict.Keys.FirstOrDefault(x => x.StartsWith(item.OriginalUrlWithDomainFix.Substring(0, 59)));
-                    var found = DownloadedImageDict[key];
-
-                    var newFilePath = Path.Combine(path, Path.GetFileName(found));
-
-                    if (File.Exists(newFilePath) == false)
+                    string filename = null;
+                    using (var wc = new WebClient())
                     {
-                        File.Copy(found, newFilePath);
+                        var imageData = wc.DownloadData(item.OriginalUrl);
+                        var responseHeaders = wc.ResponseHeaders;
+                        var disposition = responseHeaders["Content-Disposition"];
+                        var idx = disposition.IndexOf("filename=", StringComparison.OrdinalIgnoreCase);
+                        if (idx > -1)
+                        {
+                            filename = disposition.Substring(idx + "filename=".Length)
+                                .Split(new[]{'"'}, StringSplitOptions.RemoveEmptyEntries).First();
+                        }
+                        else
+                        {
+                            filename = Path.GetFileNameWithoutExtension(Path.GetTempFileName()) + ".png";
+                        }
+
+                        newFilePath = Path.Combine(path, Path.GetFileName(filename));
+                        using (var fi = File.OpenWrite(newFilePath))
+                        {
+                            fi.Write(imageData, 0, imageData.Length);
+                        }
                     }
 
                     item.SaveToPath = newFilePath;
-                    item.LocalPath = Path.Combine(basePath, Path.GetFileName(found));
+                    item.LocalPath = Path.Combine("images", Path.GetFileName(newFilePath)).Replace("\\","/");
                 }
             }
         }

@@ -17,7 +17,7 @@ namespace BloggerToHugo.Model
         public string Id { get; set; }
         public string Title { get; set; }
         public string Url { get; set; }
-        public string UrlWithouDomain { get { return Url.TrimStart("http://blog.alantsai.net/".ToCharArray()); } }
+        public string UrlWithouDomain { get { return Url.TrimStart($"https://{Constants.NewBlogDomain}".ToCharArray()); } }
         public DateTime PublishedDate { get; set; }
         public DateTime ModifyDate { get; set; }
         public IEnumerable<string> Tags { get; set; }

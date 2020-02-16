@@ -21,16 +21,16 @@ namespace BloggerToHugo.Bll
             template = ReplaceTemplate(template, "Tags", JsonConvert.SerializeObject(model.Tags.Select(x => x.ToLower().Replace("c#", "csharp"))));
             template = ReplaceTemplate(template, "Series", JsonConvert.SerializeObject(model.Series));
             template = ReplaceTemplate(template, "RedirectFrom", model.UrlWithouDomain);
-/*
+
             if (model.Images.Count > 0)
             {
-                template = ReplaceTemplate(template, "Image", model.Images.First().WyamAbsolutePath.Replace("\\", "/"));
+                template = ReplaceTemplate(template, "Image", model.Images.First().LocalPath.Replace("\\", "/"));
             }
             else
             {
                 template = ReplaceTemplate(template, "Image", "\"\"");
             }
-*/
+
             template = ReplaceTemplate(template, "Content", model.Content);
 
             return template;
